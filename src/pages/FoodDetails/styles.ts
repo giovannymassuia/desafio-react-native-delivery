@@ -3,6 +3,29 @@ import styled from 'styled-components/native';
 export const Container = styled.View`
   flex: 1;
   background: #fff;
+  position: relative;
+`;
+
+export const ConfirmationMessageContainer = styled.View`
+  z-index: 1;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  position: absolute;
+  background: #000;
+  opacity: 0.9;
+
+  align-items: center;
+  justify-content: center;
+`;
+
+export const ConfirmationMessageContainerText = styled.Text`
+  font-family: 'Poppins-Regular';
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 32px;
+  color: #f0f0f5;
 `;
 
 export const Header = styled.View`

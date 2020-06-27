@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Image } from 'react-native';
 
+import { useNavigation } from '@react-navigation/native';
 import api from '../../services/api';
 import formatValue from '../../utils/formatValue';
 
@@ -23,20 +24,38 @@ interface Food {
   name: string;
   description: string;
   price: number;
-  formattedValue: number;
+  formattedPrice: number;
   thumbnail_url: string;
 }
 
 const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Food[]>([]);
 
-  useEffect(() => {
-    async function loadOrders(): Promise<void> {
-      // Load orders from API
-    }
+  const navigation = useNavigation();
 
+  // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+  const loadOrders = async () => {
+    const response = await api.get('orders');
+
+    setOrders(
+      response.data.map((order: Food) => ({
+        ...order,
+        formattedPrice: formatValue(order.price),
+      })),
+    );
+  };
+
+  useEffect(() => {
     loadOrders();
   }, []);
+
+  // useEffect(() => {
+  //   const unsubscribe = navigation.addListener('focus', e => {
+  //     loadOrders();
+  //   });
+
+  //   return unsubscribe;
+  // }, [navigation]);
 
   return (
     <Container>

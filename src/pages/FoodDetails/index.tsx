@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useLayoutEffect,
 } from 'react';
-import { Image } from 'react-native';
+import { Image, Alert } from 'react-native';
 
 import Icon from 'react-native-vector-icons/Feather';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
@@ -16,6 +16,8 @@ import api from '../../services/api';
 
 import {
   Container,
+  ConfirmationMessageContainer,
+  ConfirmationMessageContainerText,
   Header,
   ScrollContainer,
   FoodsContainer,
@@ -53,9 +55,11 @@ interface Extra {
 interface Food {
   id: number;
   name: string;
+  category: number;
   description: string;
   price: number;
   image_url: string;
+  thumbnail_url: string;
   formattedPrice: string;
   extras: Extra[];
 }
@@ -65,6 +69,7 @@ const FoodDetails: React.FC = () => {
   const [extras, setExtras] = useState<Extra[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [foodQuantity, setFoodQuantity] = useState(1);
+  const [showConfirmationMessage, setShowConfirmationMessage] = useState(false);
 
   const navigation = useNavigation();
   const route = useRoute();
@@ -73,38 +78,102 @@ const FoodDetails: React.FC = () => {
 
   useEffect(() => {
     async function loadFood(): Promise<void> {
-      // Load a specific food with extras based on routeParams id
+      const { id } = routeParams;
+      const { data } = await api.get(`foods/${id}`);
+      setFood({ ...data, formattedPrice: formatValue(data.price) });
+      setExtras(data.extras.map((extra: Extra) => ({ ...extra, quantity: 0 })));
+
+      try {
+        await api.get(`favorites/${data.id}`);
+        setIsFavorite(true);
+      } catch {
+        //
+      }
     }
 
     loadFood();
   }, [routeParams]);
 
   function handleIncrementExtra(id: number): void {
-    // Increment extra quantity
+    const findExtra = extras.find(extra => extra.id === id);
+
+    if (findExtra) {
+      findExtra.quantity += 1;
+
+      setExtras(state =>
+        state.map(extra => (extra.id === findExtra.id ? findExtra : extra)),
+      );
+    }
   }
 
   function handleDecrementExtra(id: number): void {
-    // Decrement extra quantity
+    const findExtra = extras.find(extra => extra.id === id);
+
+    if (findExtra && findExtra.quantity > 0) {
+      findExtra.quantity -= 1;
+
+      setExtras(state =>
+        state.map(extra => (extra.id === findExtra.id ? findExtra : extra)),
+      );
+    }
   }
 
   function handleIncrementFood(): void {
-    // Increment food quantity
+    setFoodQuantity(state => state + 1);
   }
 
   function handleDecrementFood(): void {
-    // Decrement food quantity
+    setFoodQuantity(state => (state > 1 ? state - 1 : state));
   }
 
-  const toggleFavorite = useCallback(() => {
-    // Toggle if food is favorite or not
+  const toggleFavorite = useCallback(async () => {
+    if (isFavorite) {
+      await api.delete(`favorites/${food.id}`);
+    } else {
+      await api.post('favorites', {
+        id: food.id,
+        name: food.name,
+        description: food.description,
+        price: food.price,
+        image_url: food.image_url,
+        thumbnail_url: food.thumbnail_url,
+      });
+    }
+
+    setIsFavorite(!isFavorite);
   }, [isFavorite, food]);
 
   const cartTotal = useMemo(() => {
-    // Calculate cartTotal
+    return (
+      food.price * foodQuantity +
+      extras.reduce(
+        (total, extra) => total + extra.value * extra.quantity * foodQuantity,
+        0,
+      )
+    );
   }, [extras, food, foodQuantity]);
 
   async function handleFinishOrder(): Promise<void> {
-    // Finish the order and save on the API
+    try {
+      await api.post('orders', {
+        product_id: food.id,
+        name: food.name,
+        description: food.description,
+        price: food.price,
+        category: food.category,
+        thumbnail_url: food.thumbnail_url,
+        extras: extras.length > 0 ? [...extras] : [],
+      });
+
+      setShowConfirmationMessage(true);
+
+      setTimeout(() => {
+        setShowConfirmationMessage(false);
+        navigation.goBack();
+      }, 2000);
+    } catch (err) {
+      Alert.alert('Algo deu errado', 'Tente novamente');
+    }
   }
 
   // Calculate the correct icon name
@@ -129,6 +198,15 @@ const FoodDetails: React.FC = () => {
 
   return (
     <Container>
+      {showConfirmationMessage && (
+        <ConfirmationMessageContainer>
+          <Icon name="thumbs-up" size={32} color="#39B100" />
+          <ConfirmationMessageContainerText>
+            Pedido Confirmado!
+          </ConfirmationMessageContainerText>
+        </ConfirmationMessageContainer>
+      )}
+
       <Header />
 
       <ScrollContainer>
@@ -179,7 +257,9 @@ const FoodDetails: React.FC = () => {
         <TotalContainer>
           <Title>Total do pedido</Title>
           <PriceButtonContainer>
-            <TotalPrice testID="cart-total">{cartTotal}</TotalPrice>
+            <TotalPrice testID="cart-total">
+              {formatValue(cartTotal)}
+            </TotalPrice>
             <QuantityContainer>
               <Icon
                 size={15}

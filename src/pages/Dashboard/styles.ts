@@ -73,6 +73,7 @@ export const CategoryItemTitle = styled.Text`
 
 export const FoodsContainer = styled.View`
   margin-top: 40px;
+  flex: 1;
 `;
 
 export const FoodList = styled.View`
@@ -82,6 +83,7 @@ export const FoodList = styled.View`
 `;
 
 export const Food = styled.TouchableOpacity`
+  flex: 1;
   display: flex;
   flex-direction: row;
   align-items: center;
